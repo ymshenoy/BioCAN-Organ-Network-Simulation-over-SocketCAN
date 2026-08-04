@@ -1,0 +1,33 @@
+VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_: BRAIN HEART LUNGS TESTER
+
+BO_ 1 EMERGENCY_ALERT: 2 BRAIN
+ SG_ SourceOrgan : 0|8@1+ (1,0) [0|255] "" TESTER
+ SG_ DtcCode : 8|8@1+ (1,0) [0|255] "" TESTER
+
+BO_ 128 BRAIN_CMD: 1 BRAIN
+ SG_ CommandId : 0|8@1+ (1,0) [0|255] "" HEART,LUNGS
+
+BO_ 129 BRAIN_HEARTBEAT: 1 BRAIN
+ SG_ Alive : 0|8@1+ (1,0) [0|1] "" HEART,LUNGS
+
+BO_ 256 HEART_STATUS: 4 HEART
+ SG_ HeartRateBpm : 0|16@1+ (1,0) [0|250] "bpm" BRAIN,TESTER
+ SG_ BpSystolicMmHg : 16|8@1+ (1,0) [0|250] "mmHg" BRAIN,TESTER
+ SG_ BpDiastolicMmHg : 24|8@1+ (1,0) [0|150] "mmHg" BRAIN,TESTER
+
+BO_ 384 LUNGS_STATUS: 3 LUNGS
+ SG_ Spo2Percent : 0|8@1+ (1,0) [0|100] "%" BRAIN,TESTER
+ SG_ RespRateBpm : 8|8@1+ (1,0) [0|60] "breaths/min" BRAIN,TESTER
+ SG_ StatusFlags : 16|8@1+ (1,0) [0|255] "" BRAIN,TESTER
+
+CM_ BO_ 1 "Broadcast the instant a critical fault is detected. Lowest ID = wins arbitration over all routine telemetry.";
+CM_ BO_ 128 "Brain-issued control command to Heart/Lungs.";
+CM_ BO_ 129 "Brain keep-alive frame, sent every 100ms. Missing 3 cycles = CNS_SIGNAL_LOSS.";
+CM_ BO_ 256 "Heart routine telemetry, sent every 100ms. Also serves as Heart's heartbeat frame.";
+CM_ BO_ 384 "Lungs routine telemetry, sent every 100ms.";
