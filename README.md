@@ -68,7 +68,8 @@ cansend vcan0 123#DEADBEEF
 
 - [x] Step 1 — CAN ID map, message layout, DTC table (this file + canids.h + physio.dbc)
 - [x] Step 2 — `heart.c` and `lungs.c`: periodic telemetry senders
-- [ ] Step 3 — `brain.c`: reads Heart/Lungs telemetry, issues commands, demonstrates arbitration under contention
+- [x] Step 3a — `brain.c`: reads Heart/Lungs telemetry, issues commands
+- [ ] Step 3b — `brain.c`: demonstrates arbitration under contention (vcan doesn't model real bitwise arbitration — needs a bus-load/`cangen` based approach)
 - [ ] Step 4 — Heartbeat timeout detection + DTC setting + EMERGENCY_ALERT broadcast
 - [ ] Step 5 — Fault injection (kill a node / stale sensor) to trigger each DTC
 - [ ] Step 6 — Minimal UDS/ISO-TP diagnostic server in each node (0x22 / 0x19 / 0x14)
