@@ -68,6 +68,66 @@ candump vcan0 &
 cansend vcan0 123#DEADBEEF
 ```
 
+## Testing the DTCs (fault injection)
+
+```bash
+gcc -o heart heart.c -lm
+gcc -o lungs lungs.c -lm
+gcc -o brain brain.c
+
+candump vcan0 &          # terminal for watching bus traffic, incl. EMERGENCY_ALERT
+
+./heart & echo "heart pid: $!"
+./lungs & echo "lungs pid: $!"
+./brain &
+
+# C0001 Cardiac Arrest — kill Heart, wait > 350ms, Brain sets the DTC
+kill -9 <heart_pid>
+
+# C0003 CNS Signal Loss — kill Brain, wait > 350ms, Heart and Lungs each set the DTC
+kill -9 <brain_pid>
+
+# C0002 Hypoxia — toggle a simulated stuck/hypoxic sensor on a *running* Lungs,
+# without killing the process (proves the threshold/flag path, not just timeout)
+kill -USR1 <lungs_pid>   # inject fault: SpO2 forced low + stale flag set
+kill -USR1 <lungs_pid>   # clear fault
+```
+
+## Testing the diagnostic server (UDS/ISO-TP)
+
+Each node listens for single-frame ISO-TP requests on its own `*_DIAG_REQ` ID
+and replies on `*_DIAG_RESP`. Frame format: byte 0 = ISO-TP PCI (`0x0` nibble
++ payload length), followed by the UDS payload (SID + params).
+
+```bash
+candump vcan0 &
+
+# ReadDataByIdentifier (0x22) — Heart's heart rate (DID 0xF010)
+# request: 03 22 F0 10 -> len=3, SID=0x22, DID=0xF010
+cansend vcan0 7B0#0322F010
+# response on 0x7B8: 05 62 F0 10 <hr_lo> <hr_hi>
+
+# ReadDataByIdentifier — Lungs' SpO2 (DID 0xF020)
+cansend vcan0 7C0#0322F020
+# response on 0x7C8: 04 62 F0 20 <spo2>
+
+# ReadDataByIdentifier — Brain's status bitmask (DID 0xF030)
+cansend vcan0 7A0#0322F030
+# response on 0x7A8: 04 62 F0 30 <bit0=cardiac_arrest, bit1=hypoxia>
+
+# ReadDTCInformation (0x19), sub-function 0x02 (reportDTCByStatusMask)
+cansend vcan0 7B0#021902
+# response on 0x7B8: 59 02 [<dtc_hi> <dtc_lo> <status>]... (empty list if no DTC active)
+
+# ClearDiagnosticInformation (0x14), group = all (0xFFFFFF)
+cansend vcan0 7B0#0414FFFFFF
+# response on 0x7B8: 01 54
+```
+
+An unsupported DID gets a negative response (`7F <SID> 31` = requestOutOfRange);
+an unsupported SID gets `7F <SID> 10` (generalReject). A proper `tester.c`/
+Python client that builds these frames programmatically is Step 7.
+
 ## Roadmap
 
 - [x] Step 1 — CAN ID map, message layout, DTC table (this file + canids.h + physio.dbc)
@@ -75,7 +135,6 @@ cansend vcan0 123#DEADBEEF
 - [x] Step 3a — `brain.c`: reads Heart/Lungs telemetry, issues commands
 - [ ] Step 3b — `brain.c`: demonstrates arbitration under contention (vcan doesn't model real bitwise arbitration — needs a bus-load/`cangen` based approach)
 - [x] Step 4 — Heartbeat timeout detection + DTC setting + EMERGENCY_ALERT broadcast
-- [ ] Step 5 — Fault injection (kill a node / stale sensor) to trigger each DTC
-- [ ] Step 6 — Minimal UDS/ISO-TP diagnostic server in each node (0x22 / 0x19 / 0x14)
+- [x] Step 5 — Fault injection (kill a node / stale sensor) to trigger each DTC
+- [x] Step 6 — Minimal UDS/ISO-TP diagnostic server in each node (0x22 / 0x19 / 0x14)
 - [ ] Step 7 — Tester tool (C or Python) acting as the diagnostic client
-- [ ] Step 8 (optional stretch) — trace logging in a CANoe-like format
