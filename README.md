@@ -41,11 +41,15 @@ in `physio.dbc` for Python-side decoding via `cantools`.
 
 ## DTCs
 
-| Code   | Meaning                | Trigger condition                          |
-|--------|-------------------------|---------------------------------------------|
-| C0001  | Cardiac Arrest Detected | HEART_STATUS frame missing > 350ms          |
-| C0002  | Hypoxia Detected        | SpO2 < threshold, or LUNGS_STATUS stale     |
-| C0003  | CNS Signal Loss         | BRAIN_HEARTBEAT frame missing > 350ms       |
+| Code   | Meaning                | Trigger condition                          | Detected by  |
+|--------|-------------------------|---------------------------------------------|--------------|
+| C0001  | Cardiac Arrest Detected | HEART_STATUS frame missing > 350ms          | Brain        |
+| C0002  | Hypoxia Detected        | SpO2 < threshold, stale-sample flag, or LUNGS_STATUS frame missing > 350ms | Brain |
+| C0003  | CNS Signal Loss         | BRAIN_HEARTBEAT frame missing > 350ms       | Heart, Lungs (each independently) |
+
+Each DTC is edge-triggered: it's set (and `EMERGENCY_ALERT` broadcast) once when the
+condition first becomes true, and cleared once telemetry/heartbeat resumes — a node
+doesn't re-broadcast every cycle while the fault is still active.
 
 ## Environment Setup (Ubuntu, native or VM)
 
@@ -70,7 +74,7 @@ cansend vcan0 123#DEADBEEF
 - [x] Step 2 — `heart.c` and `lungs.c`: periodic telemetry senders
 - [x] Step 3a — `brain.c`: reads Heart/Lungs telemetry, issues commands
 - [ ] Step 3b — `brain.c`: demonstrates arbitration under contention (vcan doesn't model real bitwise arbitration — needs a bus-load/`cangen` based approach)
-- [ ] Step 4 — Heartbeat timeout detection + DTC setting + EMERGENCY_ALERT broadcast
+- [x] Step 4 — Heartbeat timeout detection + DTC setting + EMERGENCY_ALERT broadcast
 - [ ] Step 5 — Fault injection (kill a node / stale sensor) to trigger each DTC
 - [ ] Step 6 — Minimal UDS/ISO-TP diagnostic server in each node (0x22 / 0x19 / 0x14)
 - [ ] Step 7 — Tester tool (C or Python) acting as the diagnostic client
