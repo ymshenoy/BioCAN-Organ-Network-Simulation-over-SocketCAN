@@ -74,6 +74,7 @@ cansend vcan0 123#DEADBEEF
 gcc -o heart heart.c -lm
 gcc -o lungs lungs.c -lm
 gcc -o brain brain.c
+gcc -o tester tester.c
 
 candump vcan0 &          # terminal for watching bus traffic, incl. EMERGENCY_ALERT
 
@@ -99,6 +100,27 @@ Each node listens for single-frame ISO-TP requests on its own `*_DIAG_REQ` ID
 and replies on `*_DIAG_RESP`. Frame format: byte 0 = ISO-TP PCI (`0x0` nibble
 + payload length), followed by the UDS payload (SID + params).
 
+`tester` is a small CLI client (`tester.c`) that builds the request, sends it,
+and decodes the response — no manual hex needed:
+
+```bash
+./tester heart read heart_rate       # ReadDataByIdentifier -> "-> 78 bpm"
+./tester heart read blood_pressure   # -> "-> 120/80 mmHg"
+./tester lungs read spo2             # -> "-> 98%"
+./tester lungs read resp_rate        # -> "-> 16 breaths/min"
+./tester brain read brain_status     # -> "-> cardiac_arrest=0 hypoxia=0"
+./tester heart read F010             # raw hex DID also accepted
+
+./tester heart dtc                   # ReadDTCInformation
+./tester heart clear                 # ClearDiagnosticInformation (all groups)
+```
+
+Interface defaults to `vcan0`; override with `IFACE=vcan1 ./tester ...`.
+An unsupported DID gets a negative response (`SID=0x22 NRC=0x31` =
+requestOutOfRange); an unsupported service gets `NRC=0x10` (generalReject).
+
+Equivalent raw form with `can-utils`, if you want to see the bytes on the wire:
+
 ```bash
 candump vcan0 &
 
@@ -106,14 +128,6 @@ candump vcan0 &
 # request: 03 22 F0 10 -> len=3, SID=0x22, DID=0xF010
 cansend vcan0 7B0#0322F010
 # response on 0x7B8: 05 62 F0 10 <hr_lo> <hr_hi>
-
-# ReadDataByIdentifier — Lungs' SpO2 (DID 0xF020)
-cansend vcan0 7C0#0322F020
-# response on 0x7C8: 04 62 F0 20 <spo2>
-
-# ReadDataByIdentifier — Brain's status bitmask (DID 0xF030)
-cansend vcan0 7A0#0322F030
-# response on 0x7A8: 04 62 F0 30 <bit0=cardiac_arrest, bit1=hypoxia>
 
 # ReadDTCInformation (0x19), sub-function 0x02 (reportDTCByStatusMask)
 cansend vcan0 7B0#021902
@@ -124,10 +138,6 @@ cansend vcan0 7B0#0414FFFFFF
 # response on 0x7B8: 01 54
 ```
 
-An unsupported DID gets a negative response (`7F <SID> 31` = requestOutOfRange);
-an unsupported SID gets `7F <SID> 10` (generalReject). A proper `tester.c`/
-Python client that builds these frames programmatically is Step 7.
-
 ## Roadmap
 
 - [x] Step 1 — CAN ID map, message layout, DTC table (this file + canids.h + physio.dbc)
@@ -137,4 +147,4 @@ Python client that builds these frames programmatically is Step 7.
 - [x] Step 4 — Heartbeat timeout detection + DTC setting + EMERGENCY_ALERT broadcast
 - [x] Step 5 — Fault injection (kill a node / stale sensor) to trigger each DTC
 - [x] Step 6 — Minimal UDS/ISO-TP diagnostic server in each node (0x22 / 0x19 / 0x14)
-- [ ] Step 7 — Tester tool (C or Python) acting as the diagnostic client
+- [x] Step 7 — Tester tool (C or Python) acting as the diagnostic client
