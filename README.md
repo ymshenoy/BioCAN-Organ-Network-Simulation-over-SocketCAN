@@ -138,12 +138,29 @@ cansend vcan0 7B0#0414FFFFFF
 # response on 0x7B8: 01 54
 ```
 
+## Bus-load demo (Step 3b)
+
+`vcan` is a software loopback interface, not a shared electrical bus — it
+doesn't perform real bitwise arbitration, so "lower ID always wins" can't be
+demonstrated on it the way it would be on physical CAN hardware. What *can*
+be shown is that `vcan` never makes `ID_EMERGENCY_ALERT` (0x001) wait behind
+queued low-priority traffic, since there's no queue to get stuck behind:
+
+```bash
+./arbitration_demo.sh          # floods vcan0 with cangen, then sends 0x001 mid-flood
+```
+
+Watch the `candump` output it starts: the `001` frame appears immediately
+after the "Sending EMERGENCY_ALERT" marker, undelayed by the surrounding
+0x7FF flood. See the script's header comment for why this is a different
+(and weaker) claim than real bitwise arbitration.
+
 ## Roadmap
 
 - [x] Step 1 — CAN ID map, message layout, DTC table (this file + canids.h + physio.dbc)
 - [x] Step 2 — `heart.c` and `lungs.c`: periodic telemetry senders
 - [x] Step 3a — `brain.c`: reads Heart/Lungs telemetry, issues commands
-- [ ] Step 3b — `brain.c`: demonstrates arbitration under contention (vcan doesn't model real bitwise arbitration — needs a bus-load/`cangen` based approach)
+- [x] Step 3b — `arbitration_demo.sh`: bus-load/`cangen` demo (vcan can't show real bitwise arbitration, so this demonstrates the weaker but real property that EMERGENCY_ALERT is never queue-delayed on vcan)
 - [x] Step 4 — Heartbeat timeout detection + DTC setting + EMERGENCY_ALERT broadcast
 - [x] Step 5 — Fault injection (kill a node / stale sensor) to trigger each DTC
 - [x] Step 6 — Minimal UDS/ISO-TP diagnostic server in each node (0x22 / 0x19 / 0x14)
