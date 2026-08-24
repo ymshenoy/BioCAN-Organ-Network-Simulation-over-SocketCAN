@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
@@ -222,6 +223,7 @@ int main(int argc, char **argv)
 
         int ready = select(s + 1, &rfds, NULL, NULL, &tv);
         if (ready < 0) {
+            if (errno == EINTR) continue;
             perror("select");
             exit(1);
         }
