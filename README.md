@@ -80,7 +80,7 @@ candump vcan0 &          # terminal for watching bus traffic, incl. EMERGENCY_AL
 
 ./heart & echo "heart pid: $!"
 ./lungs & echo "lungs pid: $!"
-./brain &
+./brain & echo "brain pid: $!"
 
 # C0001 Cardiac Arrest — kill Heart, wait > 350ms, Brain sets the DTC
 kill -9 <heart_pid>
@@ -155,13 +155,3 @@ after the "Sending EMERGENCY_ALERT" marker, undelayed by the surrounding
 0x7FF flood. See the script's header comment for why this is a different
 (and weaker) claim than real bitwise arbitration.
 
-## Roadmap
-
-- [x] Step 1 — CAN ID map, message layout, DTC table (this file + canids.h + physio.dbc)
-- [x] Step 2 — `heart.c` and `lungs.c`: periodic telemetry senders
-- [x] Step 3a — `brain.c`: reads Heart/Lungs telemetry, issues commands
-- [x] Step 3b — `arbitration_demo.sh`: bus-load/`cangen` demo (vcan can't show real bitwise arbitration, so this demonstrates the weaker but real property that EMERGENCY_ALERT is never queue-delayed on vcan)
-- [x] Step 4 — Heartbeat timeout detection + DTC setting + EMERGENCY_ALERT broadcast
-- [x] Step 5 — Fault injection (kill a node / stale sensor) to trigger each DTC
-- [x] Step 6 — Minimal UDS/ISO-TP diagnostic server in each node (0x22 / 0x19 / 0x14)
-- [x] Step 7 — Tester tool (C or Python) acting as the diagnostic client
